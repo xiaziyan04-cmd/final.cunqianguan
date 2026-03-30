@@ -240,7 +240,7 @@
                 const encouragements = [
                     { t: "好耶！离目标更近一步！", e: "🎉" },
                     { t: "财神爷给你点了个大大的赞！", e: "🥳" },
-                    { t: "好棒，小金库越来越鼓啦！", e: "💰" },
+                    { t: "好棒，小金库越来越满啦！", e: "💰" },
                     { t: "富婆小特安！冲冲冲！", e: "✨" }
                 ];
 
@@ -322,7 +322,7 @@
                         showAssetModal.value = false;
                         if (increase > 0) {
                             const lucky = encouragements[Math.floor(Math.random() * encouragements.length)];
-                            toastMsg.value = `存入 ¥${increase.toLocaleString()}！\n${lucky.t}`;
+                            toastMsg.value = `存入 ¥${increase.toLocaleString()}！ ${lucky.t}`;
                             toastEmoji.value = lucky.e; showToast.value = true;
                             setTimeout(() => showToast.value = false, 2500);
                         }
@@ -330,7 +330,7 @@
                 };
 
                 const confirmDeleteAsset = (asset) => {
-                    if (confirm(`删除 [${asset.name}] 吗？`)) {
+                    if (confirm(`删除 ${asset.name} 吗？`)) {
                         const idx = currentBank.value.assets.findIndex(a => a.id === asset.id);
                         currentBank.value.history.push({ time: Date.now(), assetName: asset.name, action: '删除', before: asset.amount, after: 0 });
                         currentBank.value.assets.splice(idx, 1);
