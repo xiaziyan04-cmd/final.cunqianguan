@@ -53,14 +53,14 @@
         ::-webkit-scrollbar { display: none; }
         .modal-enter-active, .modal-leave-active { transition: all 0.25s ease-out; }
         .modal-enter-from, .modal-leave-to { transform: translateY(100%); opacity: 0; }
-        .dragging { opacity: 0.5; background-color: #fef2f2 !important; }
+        .dragging { opacity: 0.6; background-color: #fff1f2 !important; scale: 0.98; }
     </style>
 </head>
-<body class="h-screen overflow-hidden flex flex-col">
+<body class="h-screen overflow-hidden flex flex-col text-gray-800">
     <div id="app" class="max-w-md mx-auto h-full flex flex-col w-full relative">
         
         <transition name="modal">
-            <div v-if="showToast" class="fixed top-20 left-1/2 -translate-x-1/2 bg-white text-gray-800 px-5 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-3 border-2 border-red-800 text-sm font-bold min-w-max">
+            <div v-if="showToast" class="fixed top-20 left-1/2 -translate-x-1/2 bg-white px-5 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-3 border-2 border-red-800 text-sm font-bold min-w-max">
                 <span class="text-2xl">{{ toastEmoji }}</span>
                 <p class="whitespace-pre-line text-center">{{ toastMsg }}</p>
             </div>
@@ -69,7 +69,7 @@
         <header class="pt-4 pb-3 px-4 flex justify-between items-center z-30 shrink-0 text-white">
             <div class="flex-1 truncate pr-2 font-bold">
                 <h1 class="text-xl tracking-tight truncate">小特安的存钱罐</h1>
-                <p class="text-xs opacity-80 truncate">迎财神！小金库进度+++</p>
+                <p class="text-xs opacity-80 truncate">迎财神！进度+++</p>
             </div>
             <div class="flex items-center gap-2 relative">
                 <button @click="isDropdownOpen = !isDropdownOpen" class="bg-white text-gray-800 text-sm font-bold rounded-lg py-1.5 px-3 shadow-sm flex items-center gap-1 active:bg-gray-50">
@@ -79,28 +79,26 @@
                 
                 <div v-if="isDropdownOpen" class="absolute right-0 top-11 w-48 bg-white rounded-xl shadow-2xl z-50 border py-1 overflow-hidden">
                     <div v-for="(bank, idx) in banks" :key="bank.id" 
-                         draggable="true"
-                         @dragstart="onDragStart(idx)"
-                         @dragover.prevent
-                         @dragenter="onDragEnter(idx)"
-                         @dragend="onDragEnd"
+                         @touchstart="onDragStart(idx)"
+                         @touchmove="onDragMove($event)"
+                         @touchend="onDragEnd"
                          :class="{'dragging': dragIdx === idx}"
-                         class="px-3 py-2.5 text-sm font-bold text-gray-700 flex justify-between items-center hover:bg-red-50 border-b last:border-0 cursor-default">
+                         class="px-3 py-2.5 text-sm font-bold text-gray-700 flex justify-between items-center border-b last:border-0 touch-none">
                         <span @click="selectBank(bank.id)" class="truncate flex-1" :class="currentBankId === bank.id ? 'text-[#C8161D]' : ''">{{ bank.name }}</span>
                         <div class="flex items-center gap-3 ml-2">
-                            <button @click.stop="openBankEdit(bank)" class="text-gray-400 text-[10px] hover:text-gray-600">编辑</button>
-                            <div class="text-gray-300 cursor-grab active:cursor-grabbing">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8h16M4 16h16"></path></svg>
+                            <button @click.stop="openBankEdit(bank)" class="text-gray-400 text-[10px]">编辑</button>
+                            <div class="text-gray-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 8h16M4 16h16" stroke-width="2.5" stroke-linecap="round"></path></svg>
                             </div>
                         </div>
                     </div>
                 </div>
-                <button @click="showNewBankModal = true" class="bg-white text-[#C8161D] w-8 h-8 rounded-lg font-bold shadow-sm active:bg-gray-50 text-xl">＋</button>
+                <button @click="showNewBankModal = true" class="bg-white text-[#C8161D] w-8 h-8 rounded-lg font-bold shadow-sm text-xl">＋</button>
             </div>
         </header>
 
         <main class="flex-1 bg-[#FDF8F2] rounded-t-3xl shadow-2xl flex flex-col p-5 overflow-hidden">
-            <div class="flex justify-between items-center gap-4 mb-6 mt-6 shrink-0 text-gray-800">
+            <div class="flex justify-between items-center gap-4 mb-6 mt-6 shrink-0">
                 <div class="w-5/12 flex flex-col items-center">
                     <div class="jar-wrapper">
                         <div class="jar-cork"></div><div class="jar-neck"></div>
@@ -113,7 +111,7 @@
                             </div>
                         </div>
                     </div>
-                    <p class="text-sm text-gray-400 mt-3 font-bold truncate w-full text-center">目标: ¥{{ currentBank?.target?.toLocaleString() }}</p>
+                    <p class="text-sm text-gray-400 mt-3 font-bold text-center">目标: ¥{{ currentBank?.target?.toLocaleString() }}</p>
                 </div>
                 <div class="w-7/12 flex flex-col text-center">
                     <div class="bg-white/70 p-4 rounded-2xl border border-white mb-3 shadow-sm text-gray-800">
@@ -139,36 +137,33 @@
                             <span class="font-bold text-gray-700 text-base">{{ asset.name }}</span>
                             <span class="font-black text-xl text-gray-900">¥{{ asset.amount.toLocaleString() }}</span>
                         </div>
-                        <p v-if="asset.note" class="text-sm text-gray-500 mt-1.5 opacity-80">{{ asset.note }}</p>
+                        <p v-if="asset.note" class="text-sm text-gray-500 mt-1.5 opacity-80 font-bold">{{ asset.note }}</p>
                     </div>
-                    <div v-if="currentBank?.assets.length === 0" class="text-center py-10 text-gray-300 text-sm italic"> </div>
                 </div>
             </div>
         </main>
 
         <transition name="modal">
             <div v-if="showAssetModal" class="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" @click.self="showAssetModal = false">
-                <div class="bg-[#ffecd9] rounded-t-3xl p-5 w-full shadow-2xl border-t-2 border-gray-800">
-                    <div class="flex justify-between items-center mb-4 text-gray-800">
-                        <h2 class="font-bold text-lg">{{ editingAsset.id ? '修改资产' : '新增资产' }}</h2>
-                        <button @click="showAssetModal = false" class="text-3xl font-bold px-2 text-gray-400 active:scale-90">×</button>
+                <div class="bg-[#ffecd9] rounded-t-3xl p-5 w-full shadow-2xl border-t-2 border-gray-800 text-gray-800">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-lg">资产变动</h2>
+                        <button @click="showAssetModal = false" class="text-3xl font-bold px-2 text-gray-400">×</button>
                     </div>
                     <input v-model="editingAsset.name" placeholder="资产名称" class="w-full mb-3 p-3.5 rounded-xl outline-none text-base border-2 border-gray-200">
-                    <div class="relative mb-3 text-gray-800">
+                    <div class="relative mb-3">
                         <span class="absolute left-4 top-4 font-bold text-xl text-gray-500">¥</span>
                         <div class="w-full p-4 pl-10 bg-white border-2 border-gray-200 rounded-xl text-right font-black text-2xl">{{ calcDisplay }}</div>
                     </div>
                     <input v-model="editingAsset.note" placeholder="备注（选填）" class="w-full mb-5 p-3.5 rounded-xl outline-none text-sm border-2 border-gray-200">
-
                     <div class="grid grid-cols-4 gap-2 mb-5">
                         <button v-for="num in ['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+']" :key="num" @click="calcPush(num)" 
                                 :class="['p-4 rounded-xl font-bold text-xl active:scale-95 transition-all shadow-sm', ['/','*','-','+'].includes(num) ? 'bg-gray-100 text-gray-600' : num === 'C' ? 'bg-red-50 text-red-600' : 'bg-white text-gray-800']">
                             {{ num === '*' ? '×' : num === '/' ? '÷' : num }}
                         </button>
                     </div>
-
                     <div class="flex gap-2 pb-2">
-                        <button @click="calcPush('DEL')" class="py-4 px-6 bg-gray-200 text-gray-600 rounded-xl flex items-center justify-center active:bg-gray-300">
+                        <button @click="calcPush('DEL')" class="py-4 px-6 bg-gray-200 text-gray-600 rounded-xl flex items-center justify-center">
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6-7h12a2 2 0 012 2v10a2 2 0 01-2 2H9l-6-7z" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                         </button>
                         <button @click="saveAsset" class="flex-1 py-4 bg-[#d1262d] text-white rounded-xl font-bold text-lg shadow-lg">保存记录</button>
@@ -190,18 +185,18 @@
         </div>
 
         <div v-if="showNewBankModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6" @click.self="showNewBankModal = false">
-            <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl text-gray-800">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl">
                 <h2 class="font-bold text-lg mb-4">设立新存钱罐</h2>
                 <input v-model="newBank.name" placeholder="名称" class="w-full mb-3 p-3 border-2 rounded-xl">
-                <input v-model.number="newBank.target" type="number" placeholder="目标金额" class="w-full mb-5 p-3 border-2 rounded-xl">
-                <div class="flex gap-3"><button @click="showNewBankModal = false" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold">取消</button><button @click="addBank" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">确定</button></div>
+                <input v-model.number="newBank.target" type="number" placeholder="金额" class="w-full mb-5 p-3 border-2 rounded-xl">
+                <div class="flex gap-3"><button @click="showNewBankModal = false" class="flex-1 py-3 bg-gray-100 rounded-xl">取消</button><button @click="addBank" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">确定</button></div>
             </div>
         </div>
 
         <transition name="modal">
             <div v-if="showHistoryModal" class="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" @click.self="showHistoryModal = false">
-                <div class="bg-[#FDF8F2] rounded-t-3xl p-5 w-full h-[80%] flex flex-col shadow-2xl border-t-2 border-gray-800 text-gray-800">
-                    <div class="flex justify-between items-center mb-5 shrink-0 font-bold"><h2 class="text-xl">🕒 操作历史</h2><button @click="showHistoryModal = false" class="text-3xl font-bold text-gray-300">×</button></div>
+                <div class="bg-[#FDF8F2] rounded-t-3xl p-5 w-full h-[80%] flex flex-col shadow-2xl border-t-2 border-gray-800">
+                    <div class="flex justify-between items-center mb-5 font-bold text-gray-800"><h2 class="text-xl">🕒 操作历史</h2><button @click="showHistoryModal = false" class="text-3xl font-bold text-gray-300">×</button></div>
                     <div class="flex-1 overflow-y-auto space-y-4">
                         <div v-for="log in sortedHistory" :key="log.time" class="bg-white p-4 rounded-2xl border shadow-sm">
                             <div class="flex justify-between border-b border-dashed pb-2 mb-2 text-xs text-gray-400 font-bold">
@@ -242,16 +237,15 @@
                 const editingBank = reactive({ id: null, name: '', target: 0 });
                 const newBank = reactive({ name: '', target: '' });
                 
-                // 加回你之前喜欢的鼓励话语
-                const encouragements = [///
-                   { t: "好耶！离目标更近一步！", e: "🎉" },
+                const encouragements = [
+                    { t: "好耶！离目标更近一步！", e: "🎉" },
                     { t: "财神爷给你点了个大大的赞！", e: "🥳" },
-                    { t: "好棒，小金库越来越满啦！", e: "💰" },
+                    { t: "好棒，小金库越来越鼓啦！", e: "💰" },
                     { t: "富婆小特安！冲冲冲！", e: "✨" }
                 ];
 
                 onMounted(() => {
-                    const saved = localStorage.getItem('piggy_banks_v20_final');
+                    const saved = localStorage.getItem('piggy_banks_stable_vfinal');
                     if (saved) {
                         banks.value = JSON.parse(saved);
                         if (banks.value.length > 0) currentBankId.value = banks.value[0].id;
@@ -261,7 +255,7 @@
                         currentBankId.value = id;
                     }
                 });
-                watch(banks, (v) => localStorage.setItem('piggy_banks_v20_final', JSON.stringify(v)), { deep: true });
+                watch(banks, (v) => localStorage.setItem('piggy_banks_stable_vfinal', JSON.stringify(v)), { deep: true });
 
                 const currentBank = computed(() => banks.value.find(b => b.id === currentBankId.value));
                 const totalAssets = computed(() => currentBank.value?.assets.reduce((s, a) => s + Number(a.amount), 0) || 0);
@@ -271,22 +265,28 @@
                 });
                 const sortedHistory = computed(() => currentBank.value ? [...currentBank.value.history].sort((a,b)=>b.time-a.time) : []);
 
-                const onDragStart = (index) => { dragIdx.value = index; };
-                const onDragEnter = (index) => {
-                    if (dragIdx.value !== null && dragIdx.value !== index) {
-                        const item = banks.value.splice(dragIdx.value, 1)[0];
-                        banks.value.splice(index, 0, item);
-                        dragIdx.value = index;
+                // 修正版触摸拖拽逻辑
+                const onDragStart = (idx) => { dragIdx.value = idx; };
+                const onDragMove = (e) => {
+                    if (dragIdx.value === null) return;
+                    const touch = e.touches[0];
+                    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const targetRow = element?.closest('.touch-none');
+                    if (targetRow) {
+                        const targetName = targetRow.querySelector('span').innerText;
+                        const targetIdx = banks.value.findIndex(b => b.name === targetName);
+                        if (targetIdx !== -1 && targetIdx !== dragIdx.value) {
+                            const item = banks.value.splice(dragIdx.value, 1)[0];
+                            banks.value.splice(targetIdx, 0, item);
+                            dragIdx.value = targetIdx;
+                        }
                     }
                 };
                 const onDragEnd = () => { dragIdx.value = null; };
 
                 const calcPush = (val) => {
                     if (val === 'C') { calcDisplay.value = '0'; isCalculated.value = false; }
-                    else if (val === 'DEL') { 
-                        calcDisplay.value = calcDisplay.value.length > 1 ? calcDisplay.value.slice(0, -1) : '0'; 
-                        isCalculated.value = false;
-                    }
+                    else if (val === 'DEL') { calcDisplay.value = calcDisplay.value.length > 1 ? calcDisplay.value.slice(0, -1) : '0'; isCalculated.value = false; }
                     else if (val === '.') { 
                         const parts = calcDisplay.value.split(/[\+\-\*\/]/);
                         if (!parts[parts.length-1].includes('.')) calcDisplay.value += (parts[parts.length-1] === '' ? '0.' : '.');
@@ -309,7 +309,6 @@
                         let finalVal = Number(eval(cleanExpr).toFixed(2));
                         const b = currentBank.value;
                         let increase = 0;
-
                         if (editingAsset.id) {
                             const t = b.assets.find(as => as.id === editingAsset.id);
                             if (finalVal > t.amount) increase = finalVal - t.amount;
@@ -320,66 +319,33 @@
                             b.assets.push({ id: Date.now(), name: editingAsset.name, amount: finalVal, note: editingAsset.note });
                             b.history.push({ time: Date.now(), assetName: editingAsset.name, action: '新增', before: 0, after: finalVal });
                         }
-
                         showAssetModal.value = false;
-                        
-                        // 弹出随机鼓励语
                         if (increase > 0) {
                             const lucky = encouragements[Math.floor(Math.random() * encouragements.length)];
-                            toastMsg.value = `存入 ¥${increase.toLocaleString()}！  ${lucky.t}`;
-                            toastEmoji.value = lucky.e;
-                            showToast.value = true;
+                            toastMsg.value = `存入 ¥${increase.toLocaleString()}！\n${lucky.t}`;
+                            toastEmoji.value = lucky.e; showToast.value = true;
                             setTimeout(() => showToast.value = false, 2500);
                         }
-                    } catch(e) { alert("公式有误"); }
+                    } catch(e) { alert("计算出错"); }
                 };
 
                 const confirmDeleteAsset = (asset) => {
-                    if (confirm(`确定要删除资产 [${asset.name}] 吗？`)) {
+                    if (confirm(`删除 [${asset.name}] 吗？`)) {
                         const idx = currentBank.value.assets.findIndex(a => a.id === asset.id);
                         currentBank.value.history.push({ time: Date.now(), assetName: asset.name, action: '删除', before: asset.amount, after: 0 });
                         currentBank.value.assets.splice(idx, 1);
                     }
                 };
 
-                const openBankEdit = (bank) => {
-                    Object.assign(editingBank, { id: bank.id, name: bank.name, target: bank.target });
-                    isDropdownOpen.value = false;
-                    showBankEditModal.value = true;
-                };
-                const saveBankEdit = () => {
-                    const b = banks.value.find(x => x.id === editingBank.id);
-                    if (b) Object.assign(b, { name: editingBank.name, target: editingBank.target });
-                    showBankEditModal.value = false;
-                };
-                const deleteBank = () => {
-                    if (banks.value.length <= 1) return alert('至少保留一个存钱罐');
-                    if (confirm(`确定要删除 [${editingBank.name}] 及其所有记录吗？`)) {
-                        banks.value = banks.value.filter(x => x.id !== editingBank.id);
-                        currentBankId.value = banks.value[0].id;
-                        showBankEditModal.value = false;
-                    }
-                };
-
-                const addBank = () => {
-                    if (!newBank.name) return;
-                    const id = Date.now();
-                    banks.value.unshift({ id, name: newBank.name, target: newBank.target || 0, assets: [], history: [] });
-                    currentBankId.value = id;
-                    showNewBankModal.value = false;
-                    newBank.name = ''; newBank.target = '';
-                };
-
-                const openAssetModal = (a = null) => {
-                    if (a) { Object.assign(editingAsset, a); calcDisplay.value = String(a.amount); }
-                    else { Object.assign(editingAsset, { id: null, name: '', amount: 0, note: '' }); calcDisplay.value = '0'; }
-                    showAssetModal.value = true;
-                };
-
+                const openBankEdit = (bank) => { Object.assign(editingBank, { id: bank.id, name: bank.name, target: bank.target }); isDropdownOpen.value = false; showBankEditModal.value = true; };
+                const saveBankEdit = () => { const b = banks.value.find(x => x.id === editingBank.id); if (b) Object.assign(b, { name: editingBank.name, target: editingBank.target }); showBankEditModal.value = false; };
+                const deleteBank = () => { if (banks.value.length <= 1) return alert('至少保留一个'); if (confirm('确定删除存钱罐？')) { banks.value = banks.value.filter(x => x.id !== editingBank.id); currentBankId.value = banks.value[0].id; showBankEditModal.value = false; } };
+                const addBank = () => { if (!newBank.name) return; banks.value.unshift({ id: Date.now(), name: newBank.name, target: newBank.target || 0, assets: [], history: [] }); currentBankId.value = banks.value[0].id; showNewBankModal.value = false; newBank.name = ''; newBank.target = ''; };
+                const openAssetModal = (a = null) => { if (a) { Object.assign(editingAsset, a); calcDisplay.value = String(a.amount); } else { Object.assign(editingAsset, { id: null, name: '', amount: 0, note: '' }); calcDisplay.value = '0'; } showAssetModal.value = true; };
                 const selectBank = (id) => { currentBankId.value = id; isDropdownOpen.value = false; };
                 const formatTime = (ts) => { const d = new Date(ts); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`; };
 
-                return { banks, currentBankId, currentBank, totalAssets, progress, sortedHistory, dopamineColors, showNewBankModal, showAssetModal, showHistoryModal, showBankEditModal, newBank, editingBank, addBank, openAssetModal, editingAsset, calcDisplay, calcPush, saveAsset, confirmDeleteAsset, formatTime, showToast, toastMsg, toastEmoji, isDropdownOpen, selectBank, openBankEdit, saveBankEdit, deleteBank, dragIdx, onDragStart, onDragEnter, onDragEnd }
+                return { banks, currentBankId, currentBank, totalAssets, progress, sortedHistory, dopamineColors, showNewBankModal, showAssetModal, showHistoryModal, showBankEditModal, newBank, editingBank, addBank, openAssetModal, editingAsset, calcDisplay, calcPush, saveAsset, confirmDeleteAsset, formatTime, showToast, toastMsg, toastEmoji, isDropdownOpen, selectBank, openBankEdit, saveBankEdit, deleteBank, dragIdx, onDragStart, onDragMove, onDragEnd }
             }
         }).mount('#app')
     </script>
