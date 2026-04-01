@@ -198,7 +198,7 @@
         <transition name="modal">
             <div v-if="showHistoryModal" class="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" @click.self="showHistoryModal = false">
                 <div class="bg-[#FDF8F2] rounded-t-3xl p-5 w-full h-[80%] flex flex-col shadow-2xl border-t-2 border-gray-800 text-gray-800">
-                    <div class="flex justify-between items-center mb-5 shrink-0 font-bold"><h2 class="text-xl">🕒 操作历史</h2><button @click="showHistoryModal = false" class="text-3xl font-bold text-gray-300">×</button></div>
+                    <div class="flex justify-between items-center mb-5 shrink-0 font-bold"><h2 class="text-xl">🕒 变动历史</h2><button @click="showHistoryModal = false" class="text-3xl font-bold text-gray-300">×</button></div>
                     <div class="flex-1 overflow-y-auto space-y-4">
                         <div v-for="log in sortedHistory" :key="log.time" class="bg-white p-4 rounded-2xl border shadow-sm">
                             <div class="flex justify-between border-b border-dashed pb-2 mb-2 text-xs text-gray-400 font-bold">
@@ -209,7 +209,7 @@
                                     <span class="line-through text-gray-300 text-xs">¥{{ log.before.toLocaleString() }}</span>
                                     <span class="font-black text-gray-800 text-lg">¥{{ log.after.toLocaleString() }}</span>
                                 </div>
-                                <span class="text-gray-300">⬅</span>
+                                <span class="text-gray-300">   ⬅</span>
                                 <span :class="(log.after - log.before) >= 0 ? 'text-green-600 bg-green-50' : 'text-red-500 bg-red-50'" class="ml-auto px-2 py-1 rounded-lg text-sm font-black">
                                     {{ (log.after - log.before) >= 0 ? '+' : '' }}{{ (log.after - log.before).toLocaleString() }}
                                 </span>
