@@ -209,7 +209,7 @@
                                     <span class="line-through text-gray-300 text-xs">¥{{ log.before.toLocaleString() }}</span>
                                     <span class="font-black text-gray-800 text-lg">¥{{ log.after.toLocaleString() }}</span>
                                 </div>
-                                <span class="text-gray-300">   ⬅</span>
+                                <span class="text-gray-300">⬅</span>
                                 <span :class="(log.after - log.before) >= 0 ? 'text-green-600 bg-green-50' : 'text-red-500 bg-red-50'" class="ml-auto px-2 py-1 rounded-lg text-sm font-black">
                                     {{ (log.after - log.before) >= 0 ? '+' : '' }}{{ (log.after - log.before).toLocaleString() }}
                                 </span>
