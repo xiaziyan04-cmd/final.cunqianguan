@@ -1,641 +1,205 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小特安的存钱罐</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-            background-color: #d1262d; 
-            margin: 0;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none; /* 防止长按时弹出系统选中文案 */
-        }
-        .jar-wrapper { position: relative; width: 135px; height: 155px; margin: 0 auto; }
-        .jar-cork {
-            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-            width: 80px; height: 26px; background-color: #E2AD75;
-            border: 3px solid #4A3219; border-radius: 4px 4px 2px 2px; z-index: 10;
-            box-shadow: inset 0 4px 0 rgba(255,255,255,0.2), inset 0 -4px 0 rgba(0,0,0,0.1);
-        }
-        .jar-cork::after { content: ''; position: absolute; bottom: 4px; left: 0; width: 100%; height: 2px; background-color: #BC8551; }
-        .jar-neck {
-            position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
-            width: 90px; height: 14px; background-color: #ffecd9;
-            border: 3px solid #4A3219; border-radius: 8px; z-index: 9;
-        }
-        .jar-body {
-            position: absolute; top: 10px; left: 0; width: 100%; height: 100%;
-            background-color: #FCFAEF; border: 3px solid #4A3219;
-            border-radius: 32px 32px 42px 42px; overflow: hidden; z-index: 5;
-            box-shadow: inset -8px -8px 0 rgba(220, 200, 170, 0.2), inset 6px 0 0 rgba(255, 255, 255, 0.9);
-            transform: translateZ(0); 
-        }
-        .liquid {
-            position: absolute; bottom: 0; left: 0; width: 100%; background-color: #F8C331;
-            transition: height 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .wave { position: absolute; left: 0; width: 200%; transform-origin: bottom center; }
-        .wave-back {
-            bottom: 100%; height: 14px; 
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0,10 Q25,14 50,10 T100,10 L100,20 L0,20 Z' fill='%23DF9B16'/%3E%3C/svg%3E") repeat-x;
-            background-size: 50% 100%; animation: moveWave 4s linear infinite; opacity: 0.9;
-        }
-        .wave-front {
-            bottom: calc(100% - 2px); height: 12px; 
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0,10 Q25,13 50,10 T100,10 L100,20 L0,20 Z' fill='%23F8C331'/%3E%3C/svg%3E") repeat-x;
-            background-size: 50% 100%; animation: moveWave 2.8s linear infinite; 
-        }
-        @keyframes moveWave { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
-        ::-webkit-scrollbar { display: none; }
-        .modal-enter-active, .modal-leave-active { transition: all 0.25s ease-out; }
-        .modal-enter-from, .modal-leave-to { transform: translateY(100%); opacity: 0; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>小特安存钱罐 · 桌面App数据急救</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#f7f4ef;color:#222;margin:0;padding:18px}
+.wrap{max-width:760px;margin:auto}
+h1{font-size:22px;margin:0 0 8px}
+.warn{background:#fff3cd;border:1px solid #ffe69c;padding:12px;border-radius:12px;line-height:1.6}
+.info{background:white;border:1px solid #ddd;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;word-break:break-all}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+button{border:0;border-radius:10px;padding:12px;font-size:14px;font-weight:700}
+.primary{background:#d1262d;color:white}
+.secondary{background:#fff;border:1px solid #ccc;color:#333}
+.card{background:#fff;border:1px solid #ddd;border-radius:14px;margin:12px 0;padding:14px}
+.key{font-weight:800;color:#b11f26;word-break:break-all}
+.meta{font-size:12px;color:#666;margin-top:6px;line-height:1.6}
+pre{background:#f6f6f6;border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto;font-size:11px}
+.good{color:#18794e;font-weight:700}
+.bad{color:#b42318;font-weight:700}
+.small{font-size:12px;color:#666;line-height:1.6}
+</style>
 </head>
-<body class="h-screen overflow-hidden flex flex-col">
-    <div id="app" class="max-w-md mx-auto h-full flex flex-col w-full relative">
-        
-        <div v-if="showToast" class="fixed top-20 left-1/2 -translate-x-1/2 bg-white text-gray-800 px-5 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-3 border-2 border-red-800 text-sm font-bold">
-            <span>{{ toastEmoji }}</span><span>{{ toastMsg }}</span>
-        </div>
-
-        <header class="pt-4 pb-3 px-4 flex justify-between items-center z-30 shrink-0 text-white">
-            <div class="flex-1 truncate pr-2">
-                <h1 class="text-xl font-extrabold truncate">小特安的存钱罐</h1>
-                <p class="text-xs opacity-90 truncate">迎财神！进度+++</p>
-            </div>
-            <div class="flex items-center gap-2 relative">
-                <button @click="isDropdownOpen = !isDropdownOpen" class="bg-white text-gray-800 text-sm font-bold rounded-lg py-1.5 px-3 shadow-sm flex items-center gap-1">
-                    <span>{{ currentBank?.name }}</span>
-                    <svg class="w-4 h-4 transition-transform" :class="{'rotate-180': isDropdownOpen}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                </button>
-                <div v-if="isDropdownOpen" class="absolute right-0 top-11 w-44 bg-white rounded-lg shadow-2xl z-50 border py-1 overflow-hidden">
-                    <div v-for="(bank, idx) in banks" :key="bank.id" @click="selectBank(bank.id)" class="px-3 py-2.5 text-sm font-bold text-gray-700 flex justify-between items-center hover:bg-red-50 border-b last:border-0">
-                        <span class="truncate flex-1">{{ bank.name }}</span>
-                        <div class="flex gap-2 ml-2">
-                            <button v-if="idx > 0" @click.stop="moveBank(idx, -1)" class="text-gray-300 active:text-gray-600 px-1">↑</button>
-                            <button v-if="idx < banks.length-1" @click.stop="moveBank(idx, 1)" class="text-gray-300 active:text-gray-600 px-1">↓</button>
-                        </div>
-                    </div>
-                </div>
-                <button @click="showDataModal = true" class="bg-white text-[#C8161D] w-8 h-8 rounded-lg font-bold shadow-sm" title="数据备份与迁移">⇄</button>
-                <button @click="showNewBankModal = true" class="bg-white text-[#C8161D] w-8 h-8 rounded-lg font-bold shadow-sm">＋</button>
-            </div>
-        </header>
-
-        <main class="flex-1 bg-[#FDF8F2] rounded-t-3xl shadow-2xl flex flex-col p-5 overflow-hidden">
-            <div class="flex justify-between items-center gap-4 mb-6 mt-6 shrink-0">
-                <div class="w-5/12 flex flex-col items-center">
-                    <div class="jar-wrapper">
-                        <div class="jar-cork"></div><div class="jar-neck"></div>
-                        <div class="jar-body">
-                            <div class="liquid" :style="{ height: progress + '%' }">
-                                <div class="wave wave-back"></div><div class="wave wave-front"></div>
-                            </div>
-                            <div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                                <span class="text-2xl font-black text-white" style="text-shadow: 0 2px 6px rgba(0,0,0,0.35);">{{ progress }}%</span>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="text-sm text-gray-400 mt-3 font-bold truncate w-full text-center">目标: ¥{{ currentBank?.target?.toLocaleString() }}</p>
-                </div>
-                <div class="w-7/12 flex flex-col text-center">
-                    <div class="bg-white/70 p-4 rounded-2xl border border-white mb-3 shadow-sm">
-                        <p class="text-xs text-gray-400 mb-1">当前总资产</p>
-                        <p class="text-3xl font-black text-gray-800 tracking-tighter">¥{{ totalAssets.toLocaleString() }}</p>
-                    </div>
-                    <button @click="openAssetModal()" class="bg-[#d1262d] text-white py-3.5 rounded-xl font-bold text-sm shadow-md active:scale-95 transition-transform">＋ 记录新变动</button>
-                </div>
-            </div>
-
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-gray-800">资产列表</h3>
-                    <button @click="showHistoryModal = true" class="text-xs font-bold text-gray-500 bg-white/60 px-3 py-1.5 rounded-lg border shadow-sm active:bg-gray-100">🕒 操作历史</button>
-                </div>
-                <div class="flex-1 overflow-y-auto space-y-3 pb-6">
-                    <div v-for="(asset, i) in currentBank?.assets" :key="asset.id" 
-                         @click="openAssetModal(asset)"
-                         @contextmenu.prevent="handleLongPress(asset)"
-                         @touchstart="startTouch(asset)"
-                         @touchend="endTouch"
-                         :class="dopamineColors[i % dopamineColors.length]" 
-                         class="p-4 rounded-2xl shadow-sm border border-black/5 active:scale-[0.98] transition-transform">
-                        <div class="flex justify-between items-center">
-                            <span class="font-bold text-gray-800 text-base">{{ asset.name }}</span>
-                            <span class="font-black text-xl text-gray-900 font-mono">¥{{ asset.amount.toLocaleString() }}</span>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-1">{{ asset.note || '暂无备注' }}</p>
-                        <p class="text-[10px] text-gray-400 mt-1.5">最后修改：{{ formatTime(asset.updatedAt || asset.id) }}</p>
-                    </div>
-                    <div v-if="currentBank?.assets.length === 0" class="text-center py-10 text-gray-300 text-sm italic">  </div>
-                </div>
-            </div>
-        </main>
-
-        <transition name="modal">
-            <div v-if="showAssetModal" class="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" @click.self="showAssetModal = false">
-                <div class="bg-[#ffecd9] rounded-t-3xl p-5 w-full shadow-2xl border-t-2 border-gray-800">
-                    <div class="flex justify-between items-center mb-4 text-gray-800">
-                        <h2 class="font-bold text-lg">{{ editingAsset.id ? '修改资产' : '新增资产' }}</h2>
-                        <button @click="showAssetModal = false" class="text-3xl font-bold px-2 text-gray-400">×</button>
-                    </div>
-                    <input v-model="editingAsset.name" placeholder="资产名称" class="w-full mb-3 p-3.5 rounded-xl outline-none text-base border-2 border-gray-200 focus:border-red-500">
-                    <div class="relative mb-3">
-                        <span class="absolute left-4 top-4 font-bold text-xl text-gray-500">¥</span>
-                        <div class="w-full p-4 pl-10 bg-white border-2 border-gray-200 rounded-xl text-right font-black text-2xl text-gray-800">{{ calcDisplay }}</div>
-                    </div>
-                    <input v-model="editingAsset.note" placeholder="备注（选填）" class="w-full mb-5 p-3.5 rounded-xl outline-none text-sm border-2 border-gray-200 focus:border-red-500">
-
-                    <div class="grid grid-cols-4 gap-2 mb-5">
-                        <button v-for="num in ['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+']" :key="num" @click="calcPush(num)" 
-                                :class="['p-4 rounded-xl font-bold text-xl border-b-4 active:translate-y-0.5 active:border-b-0 transition-all', ['/','*','-','+'].includes(num) ? 'bg-gray-100 border-gray-300 text-gray-600' : num === 'C' ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-800']">
-                            {{ num === '*' ? '×' : num === '/' ? '÷' : num }}
-                        </button>
-                    </div>
-
-                    <div class="flex gap-2 pb-2">
-                        <button @click="calcPush('DEL')" class="py-4 px-8 bg-gray-200 text-gray-600 rounded-xl font-bold flex items-center justify-center active:bg-gray-300">
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6-7h12a2 2 0 012 2v10a2 2 0 01-2 2H9l-6-7z" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                        </button>
-                        <button @click="saveAsset" class="flex-1 py-4 bg-[#d1262d] text-white rounded-xl font-bold text-lg shadow-lg active:brightness-90 transition-all">保存记录</button>
-                    </div>
-                </div>
-            </div>
-        </transition>
-
-        <div v-if="showNewBankModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6" @click.self="showNewBankModal = false">
-            <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl border-t-4 border-red-600">
-                <h2 class="font-bold text-lg mb-4 text-gray-800">设立新存钱罐</h2>
-                <input v-model="newBank.name" placeholder="名称" class="w-full mb-3 p-3 border-2 rounded-xl outline-none focus:border-red-500">
-                <input v-model.number="newBank.target" type="number" placeholder="目标金额" class="w-full mb-5 p-3 border-2 rounded-xl outline-none focus:border-red-500">
-                <div class="flex gap-3">
-                    <button @click="showNewBankModal = false" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-500">取消</button>
-                    <button @click="addBank" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-md">设立</button>
-                </div>
-            </div>
-        </div>
-
-        <transition name="modal">
-            <div v-if="showDataModal" class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-6" @click.self="showDataModal = false">
-                <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl border-t-4 border-red-600">
-                    <div class="flex justify-between items-center mb-2">
-                        <h2 class="font-bold text-lg text-gray-800">两台手机数据迁移</h2>
-                        <button @click="showDataModal = false" class="text-3xl font-bold text-gray-300">×</button>
-                    </div>
-                    <p class="text-xs text-gray-500 leading-5 mb-5">
-                        在当前手机导出完整备份，再把 JSON 文件发送到另一台手机并导入。导入会恢复存钱罐、资产和操作历史。
-                    </p>
-                    <div class="space-y-3">
-                        <button @click="exportData" class="w-full py-3.5 bg-[#d1262d] text-white rounded-xl font-bold shadow-md active:brightness-90">⬆ 导出完整备份</button>
-                        <button @click="triggerImport" class="w-full py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold border active:bg-gray-200">⬇ 导入另一台手机的数据</button>
-                        <button @click="recoverLocalData" class="w-full py-3.5 bg-amber-50 text-amber-800 rounded-xl font-bold border border-amber-200 active:bg-amber-100">♻️ 尝试恢复本机旧数据</button>
-                    </div>
-                    <p class="text-[10px] text-gray-400 mt-4 leading-4">导入前会再次确认。建议导入前先在本机导出一份备份，以防误操作。</p>
-                </div>
-            </div>
-        </transition>
-
-        <input ref="importFileInput" type="file" accept=".json,application/json" class="hidden" @change="importData">
-
-        <transition name="modal">
-            <div v-if="showHistoryModal" class="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" @click.self="showHistoryModal = false">
-                <div class="bg-[#FDF8F2] rounded-t-3xl p-5 w-full h-[80%] flex flex-col shadow-2xl border-t-2 border-gray-800">
-                    <div class="flex justify-between items-center mb-5"><h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">🕒 操作历史</h2><button @click="showHistoryModal = false" class="text-3xl font-bold text-gray-300">×</button></div>
-                    <div class="flex-1 overflow-y-auto space-y-4 pr-1">
-                        <div v-for="log in sortedHistory" :key="log.time" class="bg-white p-4 rounded-2xl border shadow-sm">
-                            <div class="flex justify-between border-b border-dashed pb-2 mb-2 text-xs text-gray-400">
-                                <span class="font-bold text-gray-600">{{ log.assetName }} · {{ log.action }}</span><span>{{ formatTime(log.time) }}</span>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="line-through text-gray-300 text-sm">¥{{ log.before.toLocaleString() }}</span>
-                                <span class="text-gray-300">➡</span>
-                                <span class="font-black text-red-600 text-lg">¥{{ log.after.toLocaleString() }}</span>
-                                <span v-if="(log.after - log.before) !== 0" :class="(log.after - log.before) > 0 ? 'text-green-600 bg-green-50 border-green-100' : 'text-gray-400 bg-gray-50 border-gray-100'" class="ml-auto px-2 py-0.5 rounded-lg border text-[10px] font-bold">
-                                    {{ (log.after - log.before) > 0 ? '+' : '' }}{{ (log.after - log.before).toLocaleString() }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </transition>
-    </div>
-
-    <script>
-        const { createApp, ref, computed, reactive, watch, onMounted } = Vue;
-
-        // 保持与原版完全一致的 localStorage 存储位置。
-        const STORAGE_KEY = 'piggy_banks_v15_pro';
-        const RECOVERY_PREFIX = 'piggy_banks_v15_pro_recovery_';
-
-        createApp({
-            setup() {
-                const banks = ref([]);
-                const currentBankId = ref(null);
-                const isDropdownOpen = ref(false);
-                const showAssetModal = ref(false);
-                const showNewBankModal = ref(false);
-                const showHistoryModal = ref(false);
-                const showDataModal = ref(false);
-                const importFileInput = ref(null);
-                const showToast = ref(false);
-                const toastMsg = ref('');
-                const toastEmoji = ref('');
-                const calcDisplay = ref('0');
-                const isCalculated = ref(false);
-                let touchTimer = null;
-
-                const dopamineColors = ['bg-[#fff2cc]', 'bg-[#e6f3e1]', 'bg-[#e0eaf3]', 'bg-[#e8e2f6]', 'bg-[#f9e2e2]', 'bg-[#f9cb9c]', 'bg-[#d9d2e9]'];
-                const editingAsset = reactive({ id: null, name: '', amount: 0, note: '' });
-                const newBank = reactive({ name: '', target: '' });
-
-                const normalizeBanks = (rawBanks) => {
-                    const now = Date.now();
-
-                    return (Array.isArray(rawBanks) ? rawBanks : []).map((bank, bankIndex) => {
-                        const bankId = bank?.id ?? (now + bankIndex);
-                        const history = Array.isArray(bank?.history) ? bank.history : [];
-
-                        const assets = (Array.isArray(bank?.assets) ? bank.assets : []).map((asset, assetIndex) => {
-                            const fallbackId = now + bankIndex * 1000 + assetIndex;
-                            const assetId = asset?.id ?? fallbackId;
-
-                            const latestHistoryTime = history
-                                .filter(log => log && (log.assetId === assetId || log.assetName === asset?.name))
-                                .reduce((max, log) => Math.max(max, Number(log.time) || 0), 0);
-
-                            return {
-                                ...asset,
-                                id: assetId,
-                                name: asset?.name || '未命名资产',
-                                amount: Number(asset?.amount) || 0,
-                                note: asset?.note || '',
-                                updatedAt: Number(asset?.updatedAt) || latestHistoryTime || Number(assetId) || now
-                            };
-                        });
-
-                        return {
-                            ...bank,
-                            id: bankId,
-                            name: bank?.name || '未命名存钱罐',
-                            target: Number(bank?.target) || 0,
-                            assets,
-                            history
-                        };
-                    });
-                };
-
-                onMounted(() => {
-                    // 只读取原版一直使用的 key，不切换到任何新 key。
-                    const saved = localStorage.getItem(STORAGE_KEY);
-
-                    if (saved) {
-                        try {
-                            // 在新版第一次处理数据前留一份原始快照，避免后续误操作。
-                            if (!localStorage.getItem(RECOVERY_PREFIX + 'original')) {
-                                localStorage.setItem(RECOVERY_PREFIX + 'original', saved);
-                            }
-                            banks.value = normalizeBanks(JSON.parse(saved));
-                        } catch (e) {
-                            console.error('读取本地数据失败', e);
-                            banks.value = [];
-                        }
-                    }
-
-                    if (banks.value.length === 0) {
-                        const id = Date.now();
-                        banks.value = [{ id, name: '环游欧洲基金', target: 50000, assets: [], history: [], updatedAt: id }];
-                    }
-
-                    currentBankId.value = banks.value[0].id;
-                });
-
-                // 保存仍然写回原版 key。
-                watch(banks, (v) => localStorage.setItem(STORAGE_KEY, JSON.stringify(v)), { deep: true });
-
-                const currentBank = computed(() => banks.value.find(b => b.id === currentBankId.value));
-                const totalAssets = computed(() => currentBank.value?.assets.reduce((s, a) => s + Number(a.amount), 0) || 0);
-                const progress = computed(() => {
-                    if (!currentBank.value || currentBank.value.target <= 0) return 0;
-                    let p = (totalAssets.value / currentBank.value.target) * 100;
-                    return p > 100 ? 100 : parseFloat(p.toFixed(1));
-                });
-                const sortedHistory = computed(() => currentBank.value ? [...currentBank.value.history].sort((a,b)=>b.time-a.time) : []);
-
-                const calcPush = (val) => {
-                    if (val === 'C') { calcDisplay.value = '0'; isCalculated.value = false; }
-                    else if (val === 'DEL') { calcDisplay.value = calcDisplay.value.length > 1 ? calcDisplay.value.slice(0, -1) : '0'; }
-                    else if (val === '.') { 
-                        const parts = calcDisplay.value.split(/[\+\-\*\/]/);
-                        if (!parts[parts.length-1].includes('.')) calcDisplay.value += '.';
-                    } else if (isNaN(val)) {
-                        const last = calcDisplay.value.slice(-1);
-                        if (!isNaN(last) && last !== '.') calcDisplay.value += val;
-                    } else {
-                        if (calcDisplay.value === '0' || isCalculated.value) calcDisplay.value = val;
-                        else calcDisplay.value += val;
-                        isCalculated.value = false;
-                    }
-                };
-
-                const openAssetModal = (a = null) => {
-                    if (a) { Object.assign(editingAsset, a); calcDisplay.value = String(a.amount); }
-                    else { Object.assign(editingAsset, { id: null, name: '', amount: 0, note: '' }); calcDisplay.value = '0'; }
-                    isCalculated.value = false;
-                    showAssetModal.value = true;
-                };
-
-                const saveAsset = () => {
-                    if (!editingAsset.name) return alert('请输入资产名称');
-
-                    let finalVal = 0;
-                    try {
-                        let cleanExpr = calcDisplay.value.replace(/[\+\-\*\/]+$/, "");
-                        finalVal = Number(eval(cleanExpr).toFixed(2));
-                    } catch(e) {
-                        alert("计算公式有误"); return;
-                    }
-
-                    const b = currentBank.value;
-                    const now = Date.now();
-
-                    if (editingAsset.id) {
-                        const t = b.assets.find(as => as.id === editingAsset.id);
-                        if (!t) return;
-
-                        const changed =
-                            finalVal !== Number(t.amount) ||
-                            editingAsset.name !== t.name ||
-                            (editingAsset.note || '') !== (t.note || '');
-
-                        if (changed) {
-                            b.history.push({
-                                id: now + Math.floor(Math.random() * 1000),
-                                time: now,
-                                assetId: t.id,
-                                assetName: t.name,
-                                action: '修改',
-                                before: Number(t.amount) || 0,
-                                after: finalVal
-                            });
-
-                            Object.assign(t, {
-                                name: editingAsset.name,
-                                amount: finalVal,
-                                note: editingAsset.note,
-                                updatedAt: now
-                            });
-                        }
-                    } else {
-                        const assetId = now;
-
-                        b.assets.push({
-                            id: assetId,
-                            name: editingAsset.name,
-                            amount: finalVal,
-                            note: editingAsset.note,
-                            updatedAt: now
-                        });
-
-                        b.history.push({
-                            id: now + Math.floor(Math.random() * 1000),
-                            time: now,
-                            assetId,
-                            assetName: editingAsset.name,
-                            action: '新增',
-                            before: 0,
-                            after: finalVal
-                        });
-                    }
-
-                    showAssetModal.value = false;
-                };
-
-                const deleteAsset = (asset) => {
-                    if (confirm(`确定要删除资产 [${asset.name}] 吗？`)) {
-                        const idx = currentBank.value.assets.findIndex(a => a.id === asset.id);
-                        if (idx < 0) return;
-
-                        const now = Date.now();
-                        currentBank.value.history.push({
-                            id: now + Math.floor(Math.random() * 1000),
-                            time: now,
-                            assetId: asset.id,
-                            assetName: asset.name,
-                            action: '删除',
-                            before: Number(asset.amount) || 0,
-                            after: 0
-                        });
-
-                        currentBank.value.assets.splice(idx, 1);
-                        showAssetModal.value = false;
-                    }
-                };
-
-                // 长按逻辑
-                const handleLongPress = (asset) => deleteAsset(asset);
-                const startTouch = (asset) => { touchTimer = setTimeout(() => handleLongPress(asset), 800); };
-                const endTouch = () => { clearTimeout(touchTimer); };
-
-                const addBank = () => {
-                    if (!newBank.name) return;
-                    const now = Date.now();
-                    banks.value.unshift({ id: now, name: newBank.name, target: newBank.target || 0, assets: [], history: [], updatedAt: now });
-                    currentBankId.value = banks.value[0].id;
-                    showNewBankModal.value = false;
-                    newBank.name = ''; newBank.target = '';
-                };
-
-                const selectBank = (id) => { currentBankId.value = id; isDropdownOpen.value = false; };
-                const moveBank = (idx, dir) => {
-                    const target = idx + dir;
-                    const temp = banks.value[idx];
-                    banks.value[idx] = banks.value[target];
-                    banks.value[target] = temp;
-                };
-
-                const exportData = () => {
-                    const now = new Date();
-                    const pad = n => String(n).padStart(2, '0');
-                    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-
-                    const backup = {
-                        app: 'xiaotean-piggy-bank',
-                        version: 2,
-                        exportedAt: Date.now(),
-                        currentBankId: currentBankId.value,
-                        banks: banks.value
-                    };
-
-                    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-
-                    a.href = url;
-                    a.download = `小特安的存钱罐-备份-${stamp}.json`;
-
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(url);
-
-                    toastEmoji.value = '✅';
-                    toastMsg.value = '完整备份已导出';
-                    showToast.value = true;
-                    setTimeout(() => showToast.value = false, 1800);
-                };
-
-                const triggerImport = () => {
-                    if (!importFileInput.value) return;
-                    importFileInput.value.value = '';
-                    importFileInput.value.click();
-                };
-
-                const importData = (event) => {
-                    const file = event?.target?.files?.[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-
-                    reader.onload = () => {
-                        try {
-                            const data = JSON.parse(reader.result);
-                            const importedBanks = Array.isArray(data) ? data : data?.banks;
-
-                            if (!Array.isArray(importedBanks)) throw new Error('备份格式不正确');
-
-                            const normalized = normalizeBanks(importedBanks);
-                            if (!normalized.length) throw new Error('备份中没有有效数据');
-
-                            const exportedTime = Number(data?.exportedAt) || 0;
-                            const sourceTimeText = exportedTime ? formatTime(exportedTime) : '未知时间';
-
-                            const ok = confirm(
-                                `确定导入这份备份吗？\n\n备份导出时间：${sourceTimeText}\n共 ${normalized.length} 个存钱罐。\n\n导入后，本机当前数据会被这份备份替换。`
-                            );
-
-                            if (!ok) return;
-
-                            banks.value = normalized;
-
-                            const importedCurrentId = data?.currentBankId;
-                            const exists = banks.value.some(b => b.id === importedCurrentId);
-                            currentBankId.value = exists ? importedCurrentId : banks.value[0].id;
-
-                            localStorage.setItem(STORAGE_KEY, JSON.stringify(banks.value));
-                            showDataModal.value = false;
-
-                            toastEmoji.value = '✅';
-                            toastMsg.value = '数据导入成功';
-                            showToast.value = true;
-                            setTimeout(() => showToast.value = false, 1800);
-                        } catch (e) {
-                            console.error('导入失败', e);
-                            alert('导入失败：请选择由“小特安的存钱罐”导出的 JSON 备份文件。');
-                        } finally {
-                            if (event?.target) event.target.value = '';
-                        }
-                    };
-
-                    reader.readAsText(file);
-                };
-
-                const recoverLocalData = () => {
-                    const candidates = [];
-
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (!key || (!key.startsWith('piggy_banks') && !key.includes('piggy'))) continue;
-
-                        try {
-                            const raw = localStorage.getItem(key);
-                            if (!raw) continue;
-                            const parsed = JSON.parse(raw);
-                            const arr = Array.isArray(parsed) ? parsed : parsed?.banks;
-                            if (!Array.isArray(arr) || !arr.length) continue;
-
-                            const normalized = normalizeBanks(arr);
-                            if (!normalized.length) continue;
-
-                            const assetCount = normalized.reduce((sum, b) => sum + (b.assets?.length || 0), 0);
-                            const historyCount = normalized.reduce((sum, b) => sum + (b.history?.length || 0), 0);
-                            const latest = normalized.reduce((max, b) => {
-                                const bankTime = Number(b.updatedAt) || 0;
-                                const assetTime = (b.assets || []).reduce((m, a) => Math.max(m, Number(a.updatedAt) || 0), 0);
-                                const historyTime = (b.history || []).reduce((m, h) => Math.max(m, Number(h.time) || 0), 0);
-                                return Math.max(max, bankTime, assetTime, historyTime);
-                            }, 0);
-
-                            candidates.push({ key, normalized, assetCount, historyCount, latest });
-                        } catch (_) {}
-                    }
-
-                    if (!candidates.length) {
-                        alert('这个页面来源下没有找到其他可恢复的本地存钱罐数据。\n\n如果旧数据是在你原来的网页/旧 HTML 中，请打开那个原页面；浏览器不允许新页面跨来源读取它的 localStorage。');
-                        return;
-                    }
-
-                    candidates.sort((a, b) => {
-                        if (a.key === RECOVERY_PREFIX + 'original') return -1;
-                        if (b.key === RECOVERY_PREFIX + 'original') return 1;
-                        return (b.assetCount + b.historyCount) - (a.assetCount + a.historyCount);
-                    });
-
-                    const lines = candidates.map((c, idx) => {
-                        const latestText = c.latest ? formatTime(c.latest) : '未知';
-                        return `${idx + 1}. ${c.key}\n   ${c.normalized.length} 个存钱罐 / ${c.assetCount} 项资产 / ${c.historyCount} 条历史 / 最近 ${latestText}`;
-                    }).join('\n\n');
-
-                    const choice = prompt(`找到以下本地数据：\n\n${lines}\n\n请输入要恢复的编号（不会自动选择）：`);
-                    if (!choice) return;
-
-                    const index = Number(choice) - 1;
-                    if (!Number.isInteger(index) || index < 0 || index >= candidates.length) {
-                        alert('编号无效。');
-                        return;
-                    }
-
-                    const selected = candidates[index];
-                    const ok = confirm(`确定恢复这份数据吗？\n\n${selected.key}\n${selected.normalized.length} 个存钱罐，${selected.assetCount} 项资产。\n\n当前数据会先自动保存一份恢复快照。`);
-                    if (!ok) return;
-
-                    const currentRaw = localStorage.getItem(STORAGE_KEY);
-                    if (currentRaw) {
-                        localStorage.setItem(RECOVERY_PREFIX + Date.now(), currentRaw);
-                    }
-
-                    banks.value = selected.normalized;
-                    currentBankId.value = banks.value[0]?.id ?? null;
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(banks.value));
-                    showDataModal.value = false;
-
-                    toastEmoji.value = '♻️';
-                    toastMsg.value = '本机旧数据已恢复';
-                    showToast.value = true;
-                    setTimeout(() => showToast.value = false, 1800);
-                };
-
-                const formatTime = (ts) => {
-                    const d = new Date(Number(ts));
-                    if (Number.isNaN(d.getTime())) return '未知';
-
-                    const pad = n => String(n).padStart(2, '0');
-                    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                };
-
-                return {
-                    banks, currentBankId, currentBank, totalAssets, progress, sortedHistory, dopamineColors,
-                    showNewBankModal, showAssetModal, showHistoryModal, showDataModal, importFileInput,
-                    newBank, addBank, openAssetModal, editingAsset, calcDisplay, calcPush, saveAsset, deleteAsset,
-                    formatTime, showToast, toastMsg, toastEmoji, isDropdownOpen, selectBank, moveBank,
-                    handleLongPress, startTouch, endTouch, exportData, triggerImport, importData, recoverLocalData
-                }
-            }
-        }).mount('#app')
-    </script>
+<body>
+<div class="wrap">
+  <h1>🛟 小特安存钱罐 · 桌面 App 数据急救</h1>
+  <div class="warn">
+    <b>重要：</b>这个页面本身不会自动修改任何 localStorage。<br>
+    请务必从你<strong>原来一直使用的桌面图标</strong>打开本页，而不是从 Safari/Chrome 地址栏打开。
+  </div>
+
+  <div class="info" id="env"></div>
+
+  <div class="actions">
+    <button class="primary" onclick="exportAll()">① 导出当前容器全部数据</button>
+    <button class="secondary" onclick="scan()">② 重新扫描</button>
+  </div>
+
+  <div id="summary" class="info"></div>
+  <div id="list"></div>
+</div>
+
+<script>
+const OFFICIAL_KEY = 'piggy_banks_v15_pro';
+
+function standaloneState(){
+  const a = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const b = window.navigator.standalone === true;
+  return (a || b) ? '是（当前像主屏幕 Web App）' : '否（很可能是普通浏览器页面）';
+}
+
+function fmt(ts){
+  if(!ts) return '未知';
+  const d = new Date(Number(ts));
+  if(Number.isNaN(d.getTime())) return String(ts);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function analyze(raw){
+  let obj;
+  try { obj = JSON.parse(raw); } catch(e) { return {json:false}; }
+  let banks = null;
+  if(Array.isArray(obj)) banks = obj;
+  else if(obj && Array.isArray(obj.banks)) banks = obj.banks;
+  else if(obj && obj.data && Array.isArray(obj.data.banks)) banks = obj.data.banks;
+
+  if(!banks) return {json:true, piggy:false};
+
+  let assets=0, history=0, latest=0;
+  const names=[];
+  banks.forEach(b=>{
+    if(b && b.name) names.push(b.name);
+    if(Array.isArray(b?.assets)){
+      assets += b.assets.length;
+      b.assets.forEach(a=>{
+        latest=Math.max(latest, Number(a?.updatedAt||a?.modifiedAt||a?.time||a?.id||0));
+      });
+    }
+    if(Array.isArray(b?.history)){
+      history += b.history.length;
+      b.history.forEach(h=>latest=Math.max(latest, Number(h?.time||0)));
+    }
+    latest=Math.max(latest, Number(b?.updatedAt||b?.modifiedAt||b?.id||0));
+  });
+  return {json:true,piggy:true,banks:banks.length,assets,history,latest,names:names.slice(0,8)};
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function scan(){
+  document.getElementById('env').innerHTML =
+    `<b>当前网址：</b>${escapeHtml(location.href)}<br>`+
+    `<b>Origin：</b>${escapeHtml(location.origin)}<br>`+
+    `<b>主屏幕模式：</b><span class="${standaloneState().startsWith('是')?'good':'bad'}">${standaloneState()}</span><br>`+
+    `<b>localStorage 项数：</b>${localStorage.length}`;
+
+  const items=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    items.push({key:k, raw:localStorage.getItem(k)});
+  }
+
+  document.getElementById('summary').innerHTML =
+    `<b>扫描结果：</b>找到 ${items.length} 个 localStorage key。`+
+    (localStorage.getItem(OFFICIAL_KEY) !== null
+      ? `<br><span class="good">✓ 找到正式 key：${OFFICIAL_KEY}</span>`
+      : `<br><span class="bad">✗ 当前容器没有正式 key：${OFFICIAL_KEY}</span>`);
+
+  const list=document.getElementById('list');
+  list.innerHTML='';
+  items.sort((a,b)=>{
+    if(a.key===OFFICIAL_KEY) return -1;
+    if(b.key===OFFICIAL_KEY) return 1;
+    return a.key.localeCompare(b.key);
+  });
+
+  items.forEach((it,idx)=>{
+    const a=analyze(it.raw);
+    const card=document.createElement('div');
+    card.className='card';
+
+    let details = `<div class="key">${escapeHtml(it.key)} ${it.key===OFFICIAL_KEY?'⭐':''}</div>`;
+    details += `<div class="meta">长度：${it.raw?.length||0} 字符`;
+    if(a.piggy){
+      details += `<br><span class="good">识别为存钱罐数据</span>：${a.banks} 个存钱罐 / ${a.assets} 项资产 / ${a.history} 条历史`;
+      details += `<br>存钱罐：${escapeHtml(a.names.join('、')||'未命名')}`;
+      details += `<br>推测最近时间：${fmt(a.latest)}`;
+    }else if(a.json){
+      details += `<br>是 JSON，但未识别成当前存钱罐结构`;
+    }else{
+      details += `<br>不是 JSON`;
+    }
+    details += `</div>`;
+
+    details += `<div class="actions">
+      <button class="secondary" onclick="exportOne(${idx})">导出这一项</button>
+      ${a.piggy && it.key!==OFFICIAL_KEY ? `<button class="primary" onclick="restoreKey(${idx})">恢复到正式 key</button>` : ''}
+    </div>`;
+
+    details += `<pre>${escapeHtml((it.raw||'').slice(0,6000))}${(it.raw||'').length>6000?'\n…已截断预览':''}</pre>`;
+    card.innerHTML=details;
+    list.appendChild(card);
+  });
+
+  window.__items = items;
+}
+
+function download(name,text,type='application/json'){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function exportAll(){
+  const data={
+    exportedAt:new Date().toISOString(),
+    href:location.href,
+    origin:location.origin,
+    standalone:standaloneState(),
+    localStorage:{}
+  };
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    data.localStorage[k]=localStorage.getItem(k);
+  }
+  download(`piggy-emergency-all-${Date.now()}.json`,JSON.stringify(data,null,2));
+  alert('已导出当前这个 Web App 容器的全部 localStorage。请先保存好这个文件。');
+}
+
+function exportOne(idx){
+  const it=window.__items[idx];
+  if(!it) return;
+  download(`piggy-key-${it.key}-${Date.now()}.txt`,it.raw||'','text/plain');
+}
+
+function restoreKey(idx){
+  const it=window.__items[idx];
+  if(!it) return;
+  const a=analyze(it.raw);
+  if(!a.piggy) return alert('这项不是可识别的存钱罐数据。');
+
+  if(!confirm(`准备把【${it.key}】复制到正式 key：${OFFICIAL_KEY}\n\n会先自动备份当前正式 key。继续吗？`)) return;
+
+  const old=localStorage.getItem(OFFICIAL_KEY);
+  if(old!==null){
+    const backupKey=`${OFFICIAL_KEY}_before_recovery_${Date.now()}`;
+    localStorage.setItem(backupKey,old);
+  }
+  localStorage.setItem(OFFICIAL_KEY,it.raw);
+  alert('已恢复到正式 key。现在先导出全部数据，然后再恢复正常网页代码。');
+  scan();
+}
+
+scan();
+</script>
 </body>
 </html>
