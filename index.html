@@ -192,6 +192,7 @@
                     <div class="space-y-3">
                         <button @click="exportData" class="w-full py-3.5 bg-[#d1262d] text-white rounded-xl font-bold shadow-md active:brightness-90">⬆ 导出完整备份</button>
                         <button @click="triggerImport" class="w-full py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold border active:bg-gray-200">⬇ 导入另一台手机的数据</button>
+                        <button @click="recoverLocalData" class="w-full py-3.5 bg-amber-50 text-amber-800 rounded-xl font-bold border border-amber-200 active:bg-amber-100">♻️ 尝试恢复本机旧数据</button>
                     </div>
                     <p class="text-[10px] text-gray-400 mt-4 leading-4">导入前会再次确认。建议导入前先在本机导出一份备份，以防误操作。</p>
                 </div>
@@ -226,6 +227,11 @@
 
     <script>
         const { createApp, ref, computed, reactive, watch, onMounted } = Vue;
+
+        // 保持与原版完全一致的 localStorage 存储位置。
+        const STORAGE_KEY = 'piggy_banks_v15_pro';
+        const RECOVERY_PREFIX = 'piggy_banks_v15_pro_recovery_';
+
         createApp({
             setup() {
                 const banks = ref([]);
@@ -284,10 +290,15 @@
                 };
 
                 onMounted(() => {
-                    const saved = localStorage.getItem('piggy_banks_v15_pro');
+                    // 只读取原版一直使用的 key，不切换到任何新 key。
+                    const saved = localStorage.getItem(STORAGE_KEY);
 
                     if (saved) {
                         try {
+                            // 在新版第一次处理数据前留一份原始快照，避免后续误操作。
+                            if (!localStorage.getItem(RECOVERY_PREFIX + 'original')) {
+                                localStorage.setItem(RECOVERY_PREFIX + 'original', saved);
+                            }
                             banks.value = normalizeBanks(JSON.parse(saved));
                         } catch (e) {
                             console.error('读取本地数据失败', e);
@@ -303,7 +314,8 @@
                     currentBankId.value = banks.value[0].id;
                 });
 
-                watch(banks, (v) => localStorage.setItem('piggy_banks_v15_pro', JSON.stringify(v)), { deep: true });
+                // 保存仍然写回原版 key。
+                watch(banks, (v) => localStorage.setItem(STORAGE_KEY, JSON.stringify(v)), { deep: true });
 
                 const currentBank = computed(() => banks.value.find(b => b.id === currentBankId.value));
                 const totalAssets = computed(() => currentBank.value?.assets.reduce((s, a) => s + Number(a.amount), 0) || 0);
@@ -514,7 +526,7 @@
                             const exists = banks.value.some(b => b.id === importedCurrentId);
                             currentBankId.value = exists ? importedCurrentId : banks.value[0].id;
 
-                            localStorage.setItem('piggy_banks_v15_pro', JSON.stringify(banks.value));
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(banks.value));
                             showDataModal.value = false;
 
                             toastEmoji.value = '✅';
@@ -532,6 +544,81 @@
                     reader.readAsText(file);
                 };
 
+                const recoverLocalData = () => {
+                    const candidates = [];
+
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (!key || (!key.startsWith('piggy_banks') && !key.includes('piggy'))) continue;
+
+                        try {
+                            const raw = localStorage.getItem(key);
+                            if (!raw) continue;
+                            const parsed = JSON.parse(raw);
+                            const arr = Array.isArray(parsed) ? parsed : parsed?.banks;
+                            if (!Array.isArray(arr) || !arr.length) continue;
+
+                            const normalized = normalizeBanks(arr);
+                            if (!normalized.length) continue;
+
+                            const assetCount = normalized.reduce((sum, b) => sum + (b.assets?.length || 0), 0);
+                            const historyCount = normalized.reduce((sum, b) => sum + (b.history?.length || 0), 0);
+                            const latest = normalized.reduce((max, b) => {
+                                const bankTime = Number(b.updatedAt) || 0;
+                                const assetTime = (b.assets || []).reduce((m, a) => Math.max(m, Number(a.updatedAt) || 0), 0);
+                                const historyTime = (b.history || []).reduce((m, h) => Math.max(m, Number(h.time) || 0), 0);
+                                return Math.max(max, bankTime, assetTime, historyTime);
+                            }, 0);
+
+                            candidates.push({ key, normalized, assetCount, historyCount, latest });
+                        } catch (_) {}
+                    }
+
+                    if (!candidates.length) {
+                        alert('这个页面来源下没有找到其他可恢复的本地存钱罐数据。\n\n如果旧数据是在你原来的网页/旧 HTML 中，请打开那个原页面；浏览器不允许新页面跨来源读取它的 localStorage。');
+                        return;
+                    }
+
+                    candidates.sort((a, b) => {
+                        if (a.key === RECOVERY_PREFIX + 'original') return -1;
+                        if (b.key === RECOVERY_PREFIX + 'original') return 1;
+                        return (b.assetCount + b.historyCount) - (a.assetCount + a.historyCount);
+                    });
+
+                    const lines = candidates.map((c, idx) => {
+                        const latestText = c.latest ? formatTime(c.latest) : '未知';
+                        return `${idx + 1}. ${c.key}\n   ${c.normalized.length} 个存钱罐 / ${c.assetCount} 项资产 / ${c.historyCount} 条历史 / 最近 ${latestText}`;
+                    }).join('\n\n');
+
+                    const choice = prompt(`找到以下本地数据：\n\n${lines}\n\n请输入要恢复的编号（不会自动选择）：`);
+                    if (!choice) return;
+
+                    const index = Number(choice) - 1;
+                    if (!Number.isInteger(index) || index < 0 || index >= candidates.length) {
+                        alert('编号无效。');
+                        return;
+                    }
+
+                    const selected = candidates[index];
+                    const ok = confirm(`确定恢复这份数据吗？\n\n${selected.key}\n${selected.normalized.length} 个存钱罐，${selected.assetCount} 项资产。\n\n当前数据会先自动保存一份恢复快照。`);
+                    if (!ok) return;
+
+                    const currentRaw = localStorage.getItem(STORAGE_KEY);
+                    if (currentRaw) {
+                        localStorage.setItem(RECOVERY_PREFIX + Date.now(), currentRaw);
+                    }
+
+                    banks.value = selected.normalized;
+                    currentBankId.value = banks.value[0]?.id ?? null;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(banks.value));
+                    showDataModal.value = false;
+
+                    toastEmoji.value = '♻️';
+                    toastMsg.value = '本机旧数据已恢复';
+                    showToast.value = true;
+                    setTimeout(() => showToast.value = false, 1800);
+                };
+
                 const formatTime = (ts) => {
                     const d = new Date(Number(ts));
                     if (Number.isNaN(d.getTime())) return '未知';
@@ -545,7 +632,7 @@
                     showNewBankModal, showAssetModal, showHistoryModal, showDataModal, importFileInput,
                     newBank, addBank, openAssetModal, editingAsset, calcDisplay, calcPush, saveAsset, deleteAsset,
                     formatTime, showToast, toastMsg, toastEmoji, isDropdownOpen, selectBank, moveBank,
-                    handleLongPress, startTouch, endTouch, exportData, triggerImport, importData
+                    handleLongPress, startTouch, endTouch, exportData, triggerImport, importData, recoverLocalData
                 }
             }
         }).mount('#app')
